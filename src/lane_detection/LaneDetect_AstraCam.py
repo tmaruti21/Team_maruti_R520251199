@@ -7,13 +7,7 @@ Uses ROS2 to subscribe to camera feed
 
 import rclpy
 from rclpy.node import Node
-<<<<<<< HEAD
 from sensor_msgs.msg import Image
-=======
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from sensor_msgs.msg import Image
-from geometry_msgs.msg import Twist
->>>>>>> f3c6d1fd (okay :<)
 from cv_bridge import CvBridge
 import numpy as np
 import cv2
@@ -40,31 +34,12 @@ class LaneDetectorNode(Node):
         self.videoOut = None
         self.fourcc = cv2.VideoWriter_fourcc('M','J','P','G')
         
-<<<<<<< HEAD
         # Sharp turn detection parameters
         self.sharp_turn_threshold = 0.0008  # Curvature threshold for sharp turns
         self.turn_detected = False
         self.turn_direction = None  # 'LEFT' or 'RIGHT'
         self.curvature_history = []
         self.history_size = 5  # Number of frames to average
-=======
-        # Turn state (used by the visualisation overlay)
-        self.turn_detected = False
-        self.turn_direction = None  # 'LEFT' or 'RIGHT'
-
-        # Autonomous navigation parameters
-        self.forward_speed    = 0.25   # m/s nominal forward speed
-        self.max_angular_speed = 0.6   # rad/s maximum turning rate
-        # Normalised lateral error (0-1) that classifies motion as a turn
-        self.turn_threshold   = 0.15
-        # Look-ahead fraction: evaluate lane centre this far ahead (fraction of
-        # frame height, measured from the bottom = closest to rover).
-        # 0.20 = ~20 % of frame height → reacts only when the curve is close.
-        self.look_ahead_fraction = 0.20
-
-        # /cmd_vel publisher
-        self.cmd_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
->>>>>>> f3c6d1fd (okay :<)
         
         # Adjustable ROI parameters
         self.roi_top_width = 0.20  # Width at top (0.2 = 20% from center on each side)
@@ -72,24 +47,11 @@ class LaneDetectorNode(Node):
         self.show_roi = True  # Toggle ROI visualization
         
         # Subscribe to color image topic from Astra Pro Plus
-<<<<<<< HEAD
-=======
-        # Use BEST_EFFORT QoS to match the camera driver's publisher profile
-        sensor_qos = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=10
-        )
->>>>>>> f3c6d1fd (okay :<)
         self.subscription = self.create_subscription(
             Image,
             '/camera/color/image_raw',
             self.image_callback,
-<<<<<<< HEAD
             10)
-=======
-            sensor_qos)
->>>>>>> f3c6d1fd (okay :<)
         
         self.get_logger().info('='*60)
         self.get_logger().info('Lane Detection Node for Astra Pro Plus Started!')
@@ -113,10 +75,6 @@ class LaneDetectorNode(Node):
             return
         
         self.frameNum += 1
-<<<<<<< HEAD
-=======
-        nav_published = False
->>>>>>> f3c6d1fd (okay :<)
         if self.frameNum % 30 == 0:
             self.get_logger().info(f'Processing frame {self.frameNum}...')
         
@@ -163,12 +121,6 @@ class LaneDetectorNode(Node):
         lines = cv2.HoughLinesP(maskedIm, rho, theta, threshold, np.array([]), 
                                     minLineLength=min_line_len, maxLineGap=max_line_gap)
         
-<<<<<<< HEAD
-=======
-        # Classify road shape from raw structural line features
-        road_shape = self.classify_road_shape(lines, imshape)
-        
->>>>>>> f3c6d1fd (okay :<)
         # Default output image
         outputIm = im.copy()
         
@@ -370,7 +322,6 @@ class LaneDetectorNode(Node):
                         self.x2NPrev = x2N
                         self.y1NPrev = y1N
                         
-<<<<<<< HEAD
                         #-------------------------------------SHARP TURN DETECTION-----------------------------------------
                         # Calculate curvature based on lane geometry
                         # Method: Compare slope difference and convergence point
@@ -417,54 +368,6 @@ class LaneDetectorNode(Node):
                         else:
                             self.turn_detected = False
                             self.turn_direction = None
-=======
-                        #-------------------------------------NAVIGATION (shape priority + look-ahead)-----------------------------------------
-                        # Priority 1: structural shape features (_|  |_  =) appear only
-                        # when the rover is physically AT the junction → react immediately.
-                        # Priority 2: proportional look-ahead controller for straight / mild curves.
-                        if road_shape == 'TURN_LEFT':
-                            # |_ shape: left wall hit, turn left now
-                            twist = Twist()
-                            twist.linear.x  = float(self.forward_speed * 0.4)
-                            twist.angular.z = float(self.max_angular_speed)
-                            self.turn_detected = True
-                            self.turn_direction = 'LEFT'
-                            error = 0.0
-                        elif road_shape == 'TURN_RIGHT':
-                            # _| shape: right wall hit, turn right now
-                            twist = Twist()
-                            twist.linear.x  = float(self.forward_speed * 0.4)
-                            twist.angular.z = float(-self.max_angular_speed)
-                            self.turn_detected = True
-                            self.turn_direction = 'RIGHT'
-                            error = 0.0
-                        elif road_shape == 'INTERSECTION':
-                            # Cross-road ahead, no clear forward path → stop
-                            twist = Twist()
-                            self.turn_detected = False
-                            self.turn_direction = None
-                            error = 0.0
-                        else:
-                            # STRAIGHT: proportional look-ahead controller
-                            look_ahead_px = imshape[0] * self.look_ahead_fraction
-                            x_left_ahead  = xInterceptPosMean + look_ahead_px / posSlopeMean
-                            x_right_ahead = xInterceptNegMean + look_ahead_px / negSlopeMean
-                            lane_center_ahead = (x_left_ahead + x_right_ahead) / 2.0
-                            frame_center_f    = imshape[1] / 2.0
-                            error = (lane_center_ahead - frame_center_f) / frame_center_f
-                            error = max(-1.0, min(1.0, error))
-                            twist = Twist()
-                            twist.linear.x  = float(self.forward_speed * (1.0 - 0.5 * abs(error)))
-                            twist.angular.z = float(-self.max_angular_speed * error)
-                            if abs(error) > self.turn_threshold:
-                                self.turn_detected = True
-                                self.turn_direction = 'RIGHT' if error > 0 else 'LEFT'
-                            else:
-                                self.turn_detected = False
-                                self.turn_direction = None
-                        self.cmd_publisher.publish(twist)
-                        nav_published = True
->>>>>>> f3c6d1fd (okay :<)
                         
                         #-------------------------------------Blend Image-----------------------------------------
                         laneFill = im.copy()
@@ -477,17 +380,10 @@ class LaneDetectorNode(Node):
                         cv2.line(blendedIm,(x1,im.shape[0]-y1),(x2,imshape[0]-y2),(0,255,0),4)
                         cv2.line(blendedIm,(x1N,im.shape[0]-y1N),(x2N,imshape[0]-y2),(0,255,0),4)
                         
-<<<<<<< HEAD
                         #-------------------------------------SHARP TURN VISUALIZATION-----------------------------------------
                         if self.turn_detected and self.turn_direction:
                             # Display SHARP TURN warning
                             warning_text = f"SHARP TURN {self.turn_direction}!"
-=======
-                        #-------------------------------------TURN VISUALIZATION-----------------------------------------
-                        if self.turn_detected and self.turn_direction:
-                            src = "SHAPE" if road_shape != 'STRAIGHT' else "LANE"
-                            warning_text = f"[{src}] TURN {self.turn_direction}!"
->>>>>>> f3c6d1fd (okay :<)
                             font = cv2.FONT_HERSHEY_SIMPLEX
                             font_scale = 1.2
                             thickness = 3
@@ -526,7 +422,6 @@ class LaneDetectorNode(Node):
                             cv2.arrowedLine(blendedIm, start_point, end_point, 
                                           (0, 255, 255), 8, tipLength=0.4)
                             
-<<<<<<< HEAD
                             # Log sharp turn detection
                             if self.frameNum % 30 == 0:
                                 self.get_logger().info(f'🔄 SHARP TURN DETECTED: {self.turn_direction} (Curvature: {avg_curvature:.6f})')
@@ -535,17 +430,6 @@ class LaneDetectorNode(Node):
                         info_text = f"Curvature: {avg_curvature:.6f}"
                         cv2.putText(blendedIm, info_text, (10, imshape[0] - 20), 
                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-=======
-                            # Log turn detection
-                            if self.frameNum % 30 == 0:
-                                self.get_logger().info(f'↩ TURNING {self.turn_direction}  shape={road_shape}  error={error:+.2f}  ang={twist.angular.z:+.2f}')
-                        
-                        # Display navigation info
-                        nav_info = (f"Shape:{road_shape}  Err:{error:+.2f}  "
-                                    f"Lin:{twist.linear.x:.2f}  Ang:{twist.angular.z:+.2f}")
-                        cv2.putText(blendedIm, nav_info, (10, imshape[0] - 20),
-                                  cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
->>>>>>> f3c6d1fd (okay :<)
                         
                         outputIm = blendedIm
         
@@ -586,34 +470,6 @@ class LaneDetectorNode(Node):
             cv2.putText(outputIm, roi_info, (10, 30), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         
-<<<<<<< HEAD
-=======
-        # Fallback: lane-line detection failed — use shape classifier alone
-        if not nav_published:
-            twist = Twist()
-            if road_shape == 'TURN_LEFT':
-                twist.linear.x  = float(self.forward_speed * 0.4)
-                twist.angular.z = float(self.max_angular_speed)
-                self.turn_detected = True
-                self.turn_direction = 'LEFT'
-                cv2.putText(outputIm, "Shape: TURN LEFT", (10, outputIm.shape[0] - 20),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
-            elif road_shape == 'TURN_RIGHT':
-                twist.linear.x  = float(self.forward_speed * 0.4)
-                twist.angular.z = float(-self.max_angular_speed)
-                self.turn_detected = True
-                self.turn_direction = 'RIGHT'
-                cv2.putText(outputIm, "Shape: TURN RIGHT", (10, outputIm.shape[0] - 20),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 165, 255), 2)
-            elif road_shape == 'INTERSECTION':
-                cv2.putText(outputIm, "Shape: INTERSECTION - STOP", (10, outputIm.shape[0] - 20),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-            else:
-                cv2.putText(outputIm, "No lanes detected", (10, outputIm.shape[0] - 20),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (128, 128, 128), 2)
-            self.cmd_publisher.publish(twist)
-
->>>>>>> f3c6d1fd (okay :<)
         # Display the resulting frame
         cv2.imshow('Lane Detection - Astra Pro Plus', outputIm)
         
@@ -664,94 +520,11 @@ class LaneDetectorNode(Node):
     
     def cleanup(self):
         """Clean up resources"""
-<<<<<<< HEAD
-=======
-        stop = Twist()
-        self.cmd_publisher.publish(stop)
->>>>>>> f3c6d1fd (okay :<)
         if self.videoOut is not None:
             self.videoOut.release()
         cv2.destroyAllWindows()
         self.get_logger().info("Cleanup complete!")
 
-<<<<<<< HEAD
-=======
-    def classify_road_shape(self, lines, imshape):
-        """
-        Detect structural junction shapes from Hough lines.
-
-        Patterns (camera looks forward, y increases downward in image):
-
-          |_  or  L          → TURN_LEFT
-              right lane diagonal still present; left side hits a wall or
-              the cross-road appears as a near-horizontal line on the left.
-
-          _|  or  inverted-L → TURN_RIGHT
-              left lane diagonal still present; right side hits a wall or
-              a near-horizontal cross-road line appears on the right.
-
-          =                  → INTERSECTION
-              horizontal blocking line visible; both forward diagonals gone.
-
-        These shapes appear ONLY when the rover is AT the junction, not while
-        approaching it from a distance → no premature turn triggering.
-
-        Returns: 'STRAIGHT' | 'TURN_LEFT' | 'TURN_RIGHT' | 'INTERSECTION'
-        """
-        if lines is None or len(lines) == 0:
-            return 'STRAIGHT'
-
-        h, w = imshape[:2]
-        mid_x = w / 2.0
-
-        has_horiz      = False  # near-horizontal line  →  cross-road / wall edge
-        has_diag_left  = False  # diagonal lane line in left  half of frame
-        has_diag_right = False  # diagonal lane line in right half of frame
-        has_vert_left  = False  # near-vertical line on left  →  |_  wall
-        has_vert_right = False  # near-vertical line on right →  _|  wall
-
-        for line in lines:
-            for x1, y1, x2, y2 in line:
-                length = ((x2 - x1) ** 2 + (y2 - y1) ** 2) ** 0.5
-                if length < 25:            # skip short noise segments
-                    continue
-                dx = x2 - x1
-                abs_slope = abs((y2 - y1) / dx) if dx != 0 else 999.0
-                cx = (x1 + x2) / 2.0
-
-                if abs_slope < 0.36:       # angle < ~20°  →  near-horizontal
-                    has_horiz = True
-                elif abs_slope > 2.75:     # angle > ~70°  →  near-vertical
-                    if cx < mid_x:
-                        has_vert_left = True
-                    else:
-                        has_vert_right = True
-                else:                      # diagonal  (20-70° — normal lane lines)
-                    if cx < mid_x:
-                        has_diag_left = True
-                    else:
-                        has_diag_right = True
-
-        # ---- Classification rules ----
-        # INTERSECTION: blocking horizontal + both forward diagonals absent
-        if has_horiz and not has_diag_left and not has_diag_right:
-            return 'INTERSECTION'
-
-        # TURN RIGHT  →  _|  shape
-        #   right diagonal absent (hit wall/horizontal); left diagonal still visible
-        if (has_horiz or has_vert_right) and not has_diag_right:
-            if has_diag_left or has_vert_left:
-                return 'TURN_RIGHT'
-
-        # TURN LEFT   →  |_  shape
-        #   left diagonal absent (hit wall/horizontal); right diagonal still visible
-        if (has_horiz or has_vert_left) and not has_diag_left:
-            if has_diag_right or has_vert_right:
-                return 'TURN_LEFT'
-
-        return 'STRAIGHT'
-
->>>>>>> f3c6d1fd (okay :<)
 
 def main(args=None):
     rclpy.init(args=args)
