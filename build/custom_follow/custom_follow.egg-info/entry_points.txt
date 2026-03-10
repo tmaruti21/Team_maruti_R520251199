@@ -1,0 +1,3 @@
+[console_scripts]
+infer_node = custom_follow.infer_node:main
+
