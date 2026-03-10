@@ -31,6 +31,7 @@ Usage
       -p dead_end_confirm:=10
 """
 
+import collections
 import os
 import threading
 
@@ -112,12 +113,16 @@ class InferNode(Node):
         super().__init__('lane_infer_node')
 
         # ── Parameters ───────────────────────────────────────────────────────
-        self.declare_parameter('linear_speed',    0.18)
-        self.declare_parameter('angular_speed',   0.60)
-        self.declare_parameter('spin_frames',     240)
-        self.declare_parameter('dead_end_confirm', 10)
-        self.declare_parameter('show_debug',      True)
-        self.declare_parameter('model_path',      _DEFAULT_MODEL_PATH)
+        self.declare_parameter('linear_speed',      0.18)
+        self.declare_parameter('angular_speed',     0.60)
+        self.declare_parameter('spin_frames',       240)
+        self.declare_parameter('dead_end_confirm',  10)
+        self.declare_parameter('show_debug',        True)
+        self.declare_parameter('model_path',        _DEFAULT_MODEL_PATH)
+        # Smoothing: only accept a label whose confidence >= this threshold
+        self.declare_parameter('confidence_threshold', 0.65)
+        # Smoothing: majority vote over this many recent frames
+        self.declare_parameter('smooth_window',      7)
 
         p = self.get_parameter
         self._lin_spd      = p('linear_speed').value
@@ -125,6 +130,8 @@ class InferNode(Node):
         self._spin_total   = p('spin_frames').value
         self._de_thresh    = p('dead_end_confirm').value
         self._show_debug   = p('show_debug').value
+        self._conf_thresh  = p('confidence_threshold').value
+        self._smooth_win   = p('smooth_window').value
 
         # ── Load model ───────────────────────────────────────────────────────
         model_path = os.path.abspath(p('model_path').value)
@@ -146,6 +153,9 @@ class InferNode(Node):
         self._executing_turn   = None
         self._de_count         = 0
         self._spin_remaining   = 0
+        self._last_label       = None   # track label changes for WASD output
+        # Rolling window for majority-vote smoothing
+        self._label_buf        = collections.deque(maxlen=self._smooth_win)
 
         # ── ROS2 pub / sub ───────────────────────────────────────────────────
         self._bridge = CvBridge()
@@ -177,11 +187,35 @@ class InferNode(Node):
             self._latest_frame = frame
 
         label, confidence = self._classify(frame)
-        twist = self._navigate(label)
+
+        # ── Smoothing: confidence gate + majority vote ────────────────────
+        if confidence >= self._conf_thresh:
+            self._label_buf.append(label)
+        # Use the majority label in the rolling window as the effective label
+        if self._label_buf:
+            smooth_label = collections.Counter(self._label_buf).most_common(1)[0][0]
+        else:
+            smooth_label = label
+
+        twist = self._navigate(smooth_label)
         self._cmd_pub.publish(twist)
 
+        if smooth_label != self._last_label:
+            self._last_label = smooth_label
+            _LABEL_KEY = {
+                'straight':           'w',
+                'left':               'a',
+                'left_lane_endings':  'a',
+                'right':              'd',
+                'right_lane_endings': 'd',
+                'dead_end':           's',
+            }
+            key = _LABEL_KEY.get(smooth_label)
+            if key:
+                print(key, flush=True)
+
         if self._show_debug:
-            self._show(frame, label, confidence)
+            self._show(frame, smooth_label, confidence)
 
     # ── CNN inference ─────────────────────────────────────────────────────────
 
