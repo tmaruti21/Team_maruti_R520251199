@@ -1,2 +1,1 @@
-orbbec_camera::OBCameraNodeDriver;lib/liborbbec_camera.so
-orbbec_camera::FrameLatencyNode;lib/libframe_latency.so
+/home/chetan-satpute/lane_following/build/orbbec_camera/ament_cmake_index/share/ament_index/resource_index/rclcpp_components/orbbec_camera

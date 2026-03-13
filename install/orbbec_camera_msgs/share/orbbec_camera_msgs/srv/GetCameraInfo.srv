@@ -1,2 +1,1 @@
----
-sensor_msgs/CameraInfo info
+/home/chetan-satpute/lane_following/src/OrbbecSDK_ROS2/orbbec_camera_msgs/srv/GetCameraInfo.srv

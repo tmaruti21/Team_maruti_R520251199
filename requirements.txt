@@ -17,3 +17,6 @@ numpy<2                  # NumPy 2.x breaks cv_bridge in ROS2 Humble
 
 # Image processing
 Pillow==12.1.1
+
+# ESP32 serial bridge
+pyserial>=3.5,<4

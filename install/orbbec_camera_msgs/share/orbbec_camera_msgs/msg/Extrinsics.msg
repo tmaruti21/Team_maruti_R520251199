@@ -1,3 +1,1 @@
-std_msgs/Header header
-float64[9] rotation
-float64[3] translation
+/home/chetan-satpute/lane_following/src/OrbbecSDK_ROS2/orbbec_camera_msgs/msg/Extrinsics.msg

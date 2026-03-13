@@ -1,4 +1,1 @@
-string data
----
-bool success
-string message
+/home/chetan-satpute/lane_following/src/OrbbecSDK_ROS2/orbbec_camera_msgs/srv/SetString.srv

@@ -1,4 +1,1 @@
-
-DeviceInfo info
-bool success
-string message
+/home/chetan-satpute/lane_following/build/orbbec_camera_msgs/rosidl_cmake/srv/GetDeviceInfo_Response.msg

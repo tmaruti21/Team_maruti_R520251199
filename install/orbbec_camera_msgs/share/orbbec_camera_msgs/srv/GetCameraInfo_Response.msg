@@ -1,2 +1,1 @@
-
-sensor_msgs/CameraInfo info
+/home/chetan-satpute/lane_following/build/orbbec_camera_msgs/rosidl_cmake/srv/GetCameraInfo_Response.msg

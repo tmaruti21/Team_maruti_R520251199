@@ -4,14 +4,16 @@ infer_node.py  –  CNN lane inference + navigation (ROS2 node)
 =============================================================
 Loads the trained MobileNetV2 model (model/lane_model.pt) and runs
 inference on every frame from the Astra camera.  Publishes /cmd_vel
-Twist messages using the same turn-delay state machine as kayro.py.
+Twist messages using a direct policy-based controller.
 
-State machine
--------------
-  DRIVE_STRAIGHT  →  no turn detected, keep going forward
-  TURN_PENDING    →  turn detected but lanes still visible, buffer direction
-  EXECUTING_TURN  →  at the junction (no lanes), execute buffered turn
-  DEAD_END_SPIN   →  dead end confirmed, spin 360°
+Navigation policy
+-----------------
+    straight                  → go forward
+    left_lane_ending          → turn left only if confidence in [90%, 100%]
+    right_lane_ending         → turn right only if confidence in [90%, 100%]
+    dead_end                  → stop (no reverse for now)
+    left / right              → soft turn toward indicated side
+    intersection / unknown    → default forward
 
 Usage
 -----
@@ -26,9 +28,10 @@ Usage
   # Override parameters:
   ros2 run custom_follow infer_node --ros-args \
       -p linear_speed:=0.18 \
+      -p turn_linear_speed:=0.0 \
       -p angular_speed:=0.6 \
-      -p spin_frames:=240 \
-      -p dead_end_confirm:=10
+      -p lane_ending_conf_min:=0.90 \
+      -p lane_ending_conf_max:=1.00
 """
 
 import collections
@@ -47,7 +50,6 @@ from cv_bridge import CvBridge
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
-from torchvision.models import MobileNet_V2_Weights
 from PIL import Image as PILImage
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
@@ -103,20 +105,31 @@ def load_model(model_path):
 
 class InferNode(Node):
 
-    # Navigation states
-    DRIVE_STRAIGHT  = 'DRIVE_STRAIGHT'
-    TURN_PENDING    = 'TURN_PENDING'
-    EXECUTING_TURN  = 'EXECUTING_TURN'
-    DEAD_END_SPIN   = 'DEAD_END_SPIN'
+    # Debug/navigation modes
+    NAV_IDLE           = 'IDLE'
+    NAV_STRAIGHT       = 'STRAIGHT'
+    NAV_TURN_LEFT      = 'TURN_LEFT'
+    NAV_TURN_RIGHT     = 'TURN_RIGHT'
+    NAV_DEAD_END_STOP  = 'DEAD_END_STOP'
+    NAV_INTERSECTION   = 'INTERSECTION'
 
     def __init__(self):
         super().__init__('lane_infer_node')
 
         # ── Parameters ───────────────────────────────────────────────────────
-        self.declare_parameter('linear_speed',      0.18)
+        self.declare_parameter('linear_speed',      0.14)
+        self.declare_parameter('turn_linear_speed', 0.0)
         self.declare_parameter('angular_speed',     0.60)
-        self.declare_parameter('spin_frames',       240)
+        # Kept for compatibility with previous launch commands.
+        self.declare_parameter('reverse_speed',     0.12)
+        self.declare_parameter('reverse_frames',    18)
+        self.declare_parameter('min_turn_frames',   10)
+        self.declare_parameter('max_turn_frames',   80)
         self.declare_parameter('dead_end_confirm',  10)
+        self.declare_parameter('dead_end_rearm_frames', 12)
+        self.declare_parameter('lane_ending_conf_min', 0.90)
+        self.declare_parameter('lane_ending_conf_max', 1.00)
+        self.declare_parameter('soft_turn_scale',   0.60)
         self.declare_parameter('show_debug',        True)
         self.declare_parameter('model_path',        _DEFAULT_MODEL_PATH)
         # Smoothing: only accept a label whose confidence >= this threshold
@@ -126,9 +139,17 @@ class InferNode(Node):
 
         p = self.get_parameter
         self._lin_spd      = p('linear_speed').value
-        self._ang_spd      = p('angular_speed').value
-        self._spin_total   = p('spin_frames').value
+        self._turn_lin_spd = p('turn_linear_speed').value
+        self._ang_spd      = abs(p('angular_speed').value)
+        self._rev_spd      = abs(p('reverse_speed').value)
+        self._reverse_total = int(p('reverse_frames').value)
+        self._min_turn_frames = max(1, int(p('min_turn_frames').value))
+        self._max_turn_frames = max(self._min_turn_frames, int(p('max_turn_frames').value))
         self._de_thresh    = p('dead_end_confirm').value
+        self._de_rearm_frames = max(1, int(p('dead_end_rearm_frames').value))
+        self._lane_end_conf_min = float(p('lane_ending_conf_min').value)
+        self._lane_end_conf_max = float(p('lane_ending_conf_max').value)
+        self._soft_turn_scale = max(0.0, min(1.0, float(p('soft_turn_scale').value)))
         self._show_debug   = p('show_debug').value
         self._conf_thresh  = p('confidence_threshold').value
         self._smooth_win   = p('smooth_window').value
@@ -143,17 +164,15 @@ class InferNode(Node):
             raise RuntimeError('Model file missing')
 
         self._model, self._classes = load_model(model_path)
+        self._classes = [self._normalise_label(c) for c in self._classes]
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self._model  = self._model.to(self._device)
         self.get_logger().info(f'Model loaded: classes={self._classes}  device={self._device}')
 
-        # ── Navigation state machine ─────────────────────────────────────────
-        self._nav_state        = self.DRIVE_STRAIGHT
-        self._pending_turn     = None   # 'left' or 'right'
-        self._executing_turn   = None
-        self._de_count         = 0
-        self._spin_remaining   = 0
+        # ── Navigation status ───────────────────────────────────────────────
+        self._nav_state        = self.NAV_IDLE
         self._last_label       = None   # track label changes for WASD output
+        self._last_nav_message = None
         # Rolling window for majority-vote smoothing
         self._label_buf        = collections.deque(maxlen=self._smooth_win)
 
@@ -186,7 +205,8 @@ class InferNode(Node):
         with self._frame_lock:
             self._latest_frame = frame
 
-        label, confidence = self._classify(frame)
+        label, confidence, scores = self._classify(frame)
+        label = self._normalise_label(label)
 
         # ── Smoothing: confidence gate + majority vote ────────────────────
         if confidence >= self._conf_thresh:
@@ -197,7 +217,9 @@ class InferNode(Node):
         else:
             smooth_label = label
 
-        twist = self._navigate(smooth_label)
+        smooth_conf = self._class_confidence(smooth_label, scores)
+
+        twist = self._navigate(smooth_label, smooth_conf)
         self._cmd_pub.publish(twist)
 
         if smooth_label != self._last_label:
@@ -205,8 +227,10 @@ class InferNode(Node):
             _LABEL_KEY = {
                 'straight':           'w',
                 'left':               'a',
+                'left_lane_ending':   'a',
                 'left_lane_endings':  'a',
                 'right':              'd',
+                'right_lane_ending':  'd',
                 'right_lane_endings': 'd',
                 'dead_end':           's',
             }
@@ -215,12 +239,12 @@ class InferNode(Node):
                 print(key, flush=True)
 
         if self._show_debug:
-            self._show(frame, smooth_label, confidence)
+            self._show(frame, smooth_label, smooth_conf)
 
     # ── CNN inference ─────────────────────────────────────────────────────────
 
     def _classify(self, bgr_frame):
-        """Returns (label_str, confidence_float)."""
+        """Returns (label_str, confidence_float, class_score_dict)."""
         rgb    = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2RGB)
         pil    = PILImage.fromarray(rgb)
         tensor = _INFER_TF(pil).unsqueeze(0).to(self._device)
@@ -230,73 +254,90 @@ class InferNode(Node):
             probs  = torch.softmax(logits, dim=1)[0]
             idx    = probs.argmax().item()
 
-        return self._classes[idx], probs[idx].item()
+        score_map = {
+            self._normalise_label(self._classes[i]): float(probs[i].item())
+            for i in range(len(self._classes))
+        }
 
-    # ── State machine ─────────────────────────────────────────────────────────
+        return self._normalise_label(self._classes[idx]), probs[idx].item(), score_map
 
-    def _navigate(self, label):
+    def _normalise_label(self, label):
+        if not isinstance(label, str):
+            return label
+        label = label.strip().lower()
+        aliases = {
+            'left_lane_endings': 'left_lane_ending',
+            'right_lane_endings': 'right_lane_ending',
+        }
+        return aliases.get(label, label)
+
+    def _class_confidence(self, label, score_map):
+        key = self._normalise_label(label)
+        return float(score_map.get(key, 0.0))
+
+    def _set_turn_twist(self, twist, turn_left):
+        ang = self._ang_spd if turn_left else -self._ang_spd
+        twist.linear.x = self._turn_lin_spd
+        twist.angular.z = ang
+        return twist
+
+    def _set_mode(self, mode, message):
+        if mode != self._nav_state or message != self._last_nav_message:
+            self._nav_state = mode
+            self._last_nav_message = message
+            self.get_logger().info(message)
+
+    # ── Policy controller ────────────────────────────────────────────────────
+
+    def _navigate(self, label, confidence):
+        label = self._normalise_label(label)
         twist = Twist()
+        conf = max(0.0, min(1.0, float(confidence)))
 
-        # ── Dead-end spin (highest priority) ─────────────────────────────────
-        if self._nav_state == self.DEAD_END_SPIN:
-            if self._spin_remaining > 0:
-                twist.linear.x  = 0.0
-                twist.angular.z = self._ang_spd
-                self._spin_remaining -= 1
-                return twist
-            else:
-                self._nav_state = self.DRIVE_STRAIGHT
-                self.get_logger().info('NAV: spin complete → DRIVE_STRAIGHT')
-
-        # ── Dead-end detection ────────────────────────────────────────────────
+        # 1) Dead end: stop immediately (user requested stop-only behavior).
         if label == 'dead_end':
-            self._de_count += 1
-            if self._de_count >= self._de_thresh:
-                self._de_count       = 0
-                self._nav_state      = self.DEAD_END_SPIN
-                self._spin_remaining = self._spin_total
-                self.get_logger().warn('NAV: DEAD END confirmed → spinning 360°')
-                return twist   # stop this frame, spin starts next frame
-        else:
-            self._de_count = 0
+            self._set_mode(self.NAV_DEAD_END_STOP, 'NAV: dead_end → STOP')
+            return twist
 
-        # ── Turn-delay state machine ──────────────────────────────────────────
-        if self._nav_state == self.DRIVE_STRAIGHT:
-            if label in ('left', 'right'):
-                self._pending_turn = label
-                self._nav_state    = self.TURN_PENDING
-                self.get_logger().info(f'NAV: {label} detected → TURN_PENDING')
-            # keep driving straight regardless
-            twist.linear.x  = self._lin_spd
+        # 2) Lane-ending turns with strict confidence gate [90%, 100%].
+        if label == 'left_lane_ending' and self._lane_end_conf_min <= conf <= self._lane_end_conf_max:
+            self._set_mode(self.NAV_TURN_LEFT, f'NAV: left_lane_ending ({conf:.0%}) → TURN_LEFT')
+            return self._set_turn_twist(twist, turn_left=True)
+
+        if label == 'right_lane_ending' and self._lane_end_conf_min <= conf <= self._lane_end_conf_max:
+            self._set_mode(self.NAV_TURN_RIGHT, f'NAV: right_lane_ending ({conf:.0%}) → TURN_RIGHT')
+            return self._set_turn_twist(twist, turn_left=False)
+
+        # 3) Straight state.
+        if label == 'straight':
+            twist.linear.x = self._lin_spd
             twist.angular.z = 0.0
+            self._set_mode(self.NAV_STRAIGHT, 'NAV: straight → FORWARD')
+            return twist
 
-        elif self._nav_state == self.TURN_PENDING:
-            if label in ('straight', 'intersection'):
-                # Lanes disappeared = we are AT the junction → execute turn
-                self._executing_turn = self._pending_turn
-                self._nav_state      = self.EXECUTING_TURN
-                self.get_logger().info(
-                    f'NAV: lanes gone → EXECUTING_TURN {self._executing_turn}')
-            elif label in ('left', 'right'):
-                # Still approaching — update direction if it changed
-                self._pending_turn = label
-            # Still go straight while pending
-            twist.linear.x  = self._lin_spd
+        # 4) Soft turning for left/right labels.
+        if label == 'left':
+            twist.linear.x = self._lin_spd * self._soft_turn_scale
+            twist.angular.z = self._ang_spd * self._soft_turn_scale
+            self._set_mode(self.NAV_TURN_LEFT, f'NAV: left ({conf:.0%}) → SOFT TURN_LEFT')
+            return twist
+
+        if label == 'right':
+            twist.linear.x = self._lin_spd * self._soft_turn_scale
+            twist.angular.z = -self._ang_spd * self._soft_turn_scale
+            self._set_mode(self.NAV_TURN_RIGHT, f'NAV: right ({conf:.0%}) → SOFT TURN_RIGHT')
+            return twist
+
+        # 5) Intersection and unknown fallback.
+        if label == 'intersection':
+            twist.linear.x = self._lin_spd
             twist.angular.z = 0.0
+            self._set_mode(self.NAV_INTERSECTION, 'NAV: intersection → FORWARD')
+            return twist
 
-        elif self._nav_state == self.EXECUTING_TURN:
-            if label == 'straight':
-                # Turn complete
-                self._nav_state      = self.DRIVE_STRAIGHT
-                self._executing_turn = None
-                self.get_logger().info('NAV: turn complete → DRIVE_STRAIGHT')
-                twist.linear.x  = self._lin_spd
-                twist.angular.z = 0.0
-            else:
-                # Keep turning
-                ang = self._ang_spd if self._executing_turn == 'left' else -self._ang_spd
-                twist.linear.x  = self._lin_spd * 0.5
-                twist.angular.z = ang
+        twist.linear.x = self._lin_spd
+        twist.angular.z = 0.0
+        self._set_mode(self.NAV_IDLE, f'NAV: {label} ({conf:.0%}) → default FORWARD')
 
         return twist
 
@@ -307,10 +348,12 @@ class InferNode(Node):
         h, w = vis.shape[:2]
 
         state_colour = {
-            self.DRIVE_STRAIGHT: (0, 255,   0),
-            self.TURN_PENDING:   (0, 165, 255),
-            self.EXECUTING_TURN: (0,   0, 255),
-            self.DEAD_END_SPIN:  (255, 0,   0),
+            self.NAV_IDLE:          (180, 180, 180),
+            self.NAV_STRAIGHT:      (0, 255, 0),
+            self.NAV_TURN_LEFT:     (0, 165, 255),
+            self.NAV_TURN_RIGHT:    (0, 120, 255),
+            self.NAV_DEAD_END_STOP: (0, 0, 255),
+            self.NAV_INTERSECTION:  (255, 255, 0),
         }
         col = state_colour.get(self._nav_state, (200, 200, 200))
 

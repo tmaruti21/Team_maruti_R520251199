@@ -9,6 +9,7 @@ setup.py
 ../../build/custom_follow/custom_follow.egg-info/top_level.txt
 ../../build/custom_follow/custom_follow.egg-info/zip-safe
 custom_follow/__init__.py
+custom_follow/esp32_bridge.py
 custom_follow/infer_node.py
 model/lane_model.pt
 resource/custom_follow

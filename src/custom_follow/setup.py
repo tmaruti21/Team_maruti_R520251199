@@ -19,7 +19,7 @@ setup(
         [('share/' + package_name + '/model', _model_files)]
         if _model_files else []
     ),
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'pyserial'],
     zip_safe=True,
     maintainer='user',
     maintainer_email='user@todo.todo',
@@ -28,6 +28,7 @@ setup(
     entry_points={
         'console_scripts': [
             'infer_node = custom_follow.infer_node:main',
+            'esp32_bridge = custom_follow.esp32_bridge:main',
         ],
     },
 )

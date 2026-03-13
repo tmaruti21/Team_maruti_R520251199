@@ -1,2 +1,1 @@
-std_msgs/Header header
-string json_data
+/home/chetan-satpute/lane_following/src/OrbbecSDK_ROS2/orbbec_camera_msgs/msg/Metadata.msg

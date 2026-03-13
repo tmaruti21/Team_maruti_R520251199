@@ -1,1 +1,1 @@
-cv_bridge:geometry_msgs:rclpy:sensor_msgs
+cv_bridge:geometry_msgs:python3-serial:rclpy:sensor_msgs

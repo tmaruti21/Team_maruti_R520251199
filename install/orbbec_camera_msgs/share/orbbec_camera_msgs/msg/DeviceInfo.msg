@@ -1,6 +1,1 @@
-std_msgs/Header header
-string name
-string serial_number
-string firmware_version
-string supported_min_sdk_version
-string hardware_version
+/home/chetan-satpute/lane_following/src/OrbbecSDK_ROS2/orbbec_camera_msgs/msg/DeviceInfo.msg
