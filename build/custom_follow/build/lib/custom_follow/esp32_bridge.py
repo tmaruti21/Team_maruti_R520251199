@@ -48,7 +48,7 @@ class Esp32BridgeNode(Node):
     def __init__(self):
         super().__init__('esp32_bridge')
 
-        self.declare_parameter('serial_port', '/dev/ttyACM2')
+        self.declare_parameter('serial_port', '/dev/ttyACM3')
         self.declare_parameter('baud_rate', 115200)
         self.declare_parameter('wheel_base_m', 0.24)
         self.declare_parameter('max_linear_speed', 0.35)

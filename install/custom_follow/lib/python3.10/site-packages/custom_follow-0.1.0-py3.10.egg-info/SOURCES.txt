@@ -11,5 +11,6 @@ setup.py
 custom_follow/__init__.py
 custom_follow/esp32_bridge.py
 custom_follow/infer_node.py
+custom_follow/model_arch.py
 model/lane_model.pt
 resource/custom_follow

@@ -1,0 +1,45 @@
+[0.496s] Invoking command in '/home/chetan-satpute/lane_following/src/keyboard_teleoperation': PYTHONPATH=/home/chetan-satpute/lane_following/build/keyboard_teleoperation/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/keyboard_teleoperation build --build-base /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build install --record /home/chetan-satpute/lane_following/build/keyboard_teleoperation/install.log --single-version-externally-managed install_data
+[0.669s] running egg_info
+[0.669s] creating ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info
+[0.669s] writing ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/PKG-INFO
+[0.669s] writing dependency_links to ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/dependency_links.txt
+[0.670s] writing entry points to ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/entry_points.txt
+[0.670s] writing requirements to ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/requires.txt
+[0.670s] writing top-level names to ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/top_level.txt
+[0.670s] writing manifest file '../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/SOURCES.txt'
+[0.671s] reading manifest file '../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/SOURCES.txt'
+[0.672s] writing manifest file '../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info/SOURCES.txt'
+[0.672s] running build
+[0.672s] running build_py
+[0.672s] creating /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build
+[0.672s] creating /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib
+[0.672s] creating /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation
+[0.672s] copying keyboard_teleoperation/keyboard_teleop_node.py -> /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation
+[0.672s] copying keyboard_teleoperation/__init__.py -> /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation
+[0.672s] copying keyboard_teleoperation/esp32_bridge_node.py -> /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation
+[0.673s] running install
+[0.673s] running install_lib
+[0.674s] creating /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation
+[0.674s] copying /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation/keyboard_teleop_node.py -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation
+[0.674s] copying /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation/__init__.py -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation
+[0.674s] copying /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build/lib/keyboard_teleoperation/esp32_bridge_node.py -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation
+[0.674s] byte-compiling /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation/keyboard_teleop_node.py to keyboard_teleop_node.cpython-310.pyc
+[0.676s] byte-compiling /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation/__init__.py to __init__.cpython-310.pyc
+[0.676s] byte-compiling /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation/esp32_bridge_node.py to esp32_bridge_node.cpython-310.pyc
+[0.677s] running install_data
+[0.678s] creating /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/ament_index
+[0.678s] creating /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/ament_index/resource_index
+[0.678s] creating /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/ament_index/resource_index/packages
+[0.678s] copying resource/keyboard_teleoperation -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/ament_index/resource_index/packages
+[0.678s] copying package.xml -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/keyboard_teleoperation
+[0.678s] creating /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/keyboard_teleoperation/launch
+[0.678s] copying launch/esp32_bridge.launch.py -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/keyboard_teleoperation/launch
+[0.678s] creating /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/keyboard_teleoperation/firmware
+[0.678s] copying firmware/esp32_keyboard_bridge/esp32_keyboard_bridge.ino -> /home/chetan-satpute/lane_following/install/keyboard_teleoperation/share/keyboard_teleoperation/firmware
+[0.679s] running install_egg_info
+[0.680s] Copying ../../build/keyboard_teleoperation/keyboard_teleoperation.egg-info to /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages/keyboard_teleoperation-0.1.0-py3.10.egg-info
+[0.680s] running install_scripts
+[0.694s] Installing esp32_cmd_bridge script to /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/keyboard_teleoperation
+[0.694s] Installing keyboard_teleop script to /home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/keyboard_teleoperation
+[0.694s] writing list of installed files to '/home/chetan-satpute/lane_following/build/keyboard_teleoperation/install.log'
+[0.711s] Invoked command in '/home/chetan-satpute/lane_following/src/keyboard_teleoperation' returned '0': PYTHONPATH=/home/chetan-satpute/lane_following/build/keyboard_teleoperation/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/chetan-satpute/lane_following/install/keyboard_teleoperation/lib/python3.10/site-packages:${PYTHONPATH} /usr/bin/python3 -W ignore:setup.py install is deprecated -W ignore:easy_install command is deprecated setup.py egg_info --egg-base ../../build/keyboard_teleoperation build --build-base /home/chetan-satpute/lane_following/build/keyboard_teleoperation/build install --record /home/chetan-satpute/lane_following/build/keyboard_teleoperation/install.log --single-version-externally-managed install_data
