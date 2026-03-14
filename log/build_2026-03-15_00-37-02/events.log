@@ -1,0 +1,10 @@
+[0.000000] (-) TimerEvent: {}
+[0.000209] (-) JobUnselected: {'identifier': 'custom_follow'}
+[0.000226] (-) JobUnselected: {'identifier': 'keyboard_teleoperation'}
+[0.000237] (-) JobUnselected: {'identifier': 'orbbec_camera'}
+[0.000245] (-) JobUnselected: {'identifier': 'orbbec_camera_msgs'}
+[0.000253] (-) JobUnselected: {'identifier': 'orbbec_description'}
+[0.000263] (auto_nav) JobQueued: {'identifier': 'auto_nav', 'dependencies': OrderedDict([('custom_follow', '/home/chetan-satpute/lane_following/install/custom_follow'), ('keyboard_teleoperation', '/home/chetan-satpute/lane_following/install/keyboard_teleoperation')])}
+[0.000546] (auto_nav) JobStarted: {'identifier': 'auto_nav'}
+[0.005878] (auto_nav) JobEnded: {'identifier': 'auto_nav', 'rc': 1}
+[0.016243] (-) EventReactorShutdown: {}
