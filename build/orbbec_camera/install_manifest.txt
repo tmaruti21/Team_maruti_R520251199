@@ -1,7 +1,0 @@
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//libdepthengine.so
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//libdepthengine.so.2.0
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//libOrbbecSDK.so.1.10
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//libOrbbecSDK.so.1.10.35
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//libob_usb.so
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//libOrbbecSDK.so
-/home/chetan-satpute/lane_following/install/orbbec_camera/lib//liblive555.so
