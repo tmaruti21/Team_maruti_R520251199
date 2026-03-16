@@ -19,12 +19,12 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'serial_pwm_controller = rover_control.serial_pwm_controller:main',
-            'keyboard_teleop = rover_control.keyboard_teleop:main',
             'lane_follower = rover_control.lane_follower:main',
             'camera_publisher = rover_control.camera_publisher:main',
             'hsv_calibrator = rover_control.hsv_calibrator:main',
             'hsv_calculator = rover_control.hsv_calculator:main',
+            'serial_teleop = rover_control.serial_teleop:main',
+            'hard_core = rover_control.hard_core:main',
         ],
     },
 )
