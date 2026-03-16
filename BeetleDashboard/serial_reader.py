@@ -22,7 +22,7 @@ import argparse
 # CONFIGURATION
 # ============================================
 
-DEFAULT_PORT = "/dev/ttyUSB0"
+DEFAULT_PORT = "/dev/ttyACM0"
 DEFAULT_BAUD = 115200
 FLASK_URL = "http://localhost:5000/update"
 DATA_PREFIX = "DATA:"

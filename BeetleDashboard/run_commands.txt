@@ -1,0 +1,41 @@
+# SEQUENCE OF COMMANDS TO RUN THE BEETLE DASHBOARD
+
+# ======================================================================
+# Terminal 1: Start the Flask Dashboard Server
+# ======================================================================
+
+# 1. Open a terminal and navigate to this directory (if not already here)
+# cd /path/to/BeetleDashboard
+
+# 2. Activate the virtual environment
+source venv/bin/activate
+
+# 3. (Optional) Install required dependencies if running for the first time
+pip install -r requirements.txt
+
+# 4. Start the Flask server
+python app.py
+
+# Expected Output: The server runs and hosts the dashboard at http://localhost:5000/
+
+
+# ======================================================================
+# Terminal 2: Send Sensor Data to the Dashboard
+# ======================================================================
+
+# 1. Open a second (new) terminal window or tab
+# 2. Navigate to this directory again
+# cd /path/to/BeetleDashboard
+
+# 3. Activate the virtual environment
+source venv/bin/activate
+
+# 4. Run ONE of the following commands based on your situation:
+
+# OPTION A: Run with real hardware (ESP32 connected via USB)
+# (By default it reads from /dev/ttyUSB0 at 115200 baud)
+python serial_reader.py
+
+# OPTION B: Run with simulated data (Testing without hardware)
+# (Generates and sends fake multi-sensor data to the dashboard)
+python fake_sender.py
