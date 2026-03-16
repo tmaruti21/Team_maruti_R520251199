@@ -21,7 +21,7 @@ class ImuSample:
     ay: float
     az: float
     gx: float
-    gy: float
+    gy: floatls 
     gz: float
     temp_c: float
 
