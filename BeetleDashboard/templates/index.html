@@ -21,15 +21,15 @@ height:100vh;
 overflow:hidden;
 }
 
-/* ===== MAIN LAYOUT ===== */
+/* ===== LAYOUT ===== */
 
 .container{
 display:grid;
-grid-template-columns:30% 40% 30%;
+grid-template-columns:22% 56% 22%;
 height:100vh;
 }
 
-/* ================= TELEMETRY ================= */
+/* ===== TELEMETRY ===== */
 
 .telemetry{
 padding:20px;
@@ -73,7 +73,7 @@ justify-content:center;
 align-self:flex-end;
 }
 
-/* ================= CAMERA ================= */
+/* ===== CAMERA ===== */
 
 .camera{
 display:flex;
@@ -89,15 +89,22 @@ margin-bottom:10px;
 
 .camera-feed{
 width:100%;
-height:420px;
+height:600px;
 border:2px solid rgba(255,200,0,.4);
 border-radius:10px;
 display:flex;
 align-items:center;
 justify-content:center;
+overflow:hidden;
 }
 
-/* ================= RIGHT PANEL ================= */
+.camera-feed img{
+width:100%;
+height:100%;
+object-fit:cover;
+}
+
+/* ===== RIGHT PANEL ===== */
 
 .right-panel{
 padding:20px;
@@ -155,6 +162,8 @@ canvas{
 width:100%;
 height:100%;
 }
+
+/* info */
 
 .map-info{
 display:flex;
@@ -222,8 +231,7 @@ TEMP
 <div class="camera-title">CAMERA FEED</div>
 
 <div class="camera-feed">
-<img id="cameraStream" style="max-width:100%;max-height:100%;">
-<span id="cameraPlaceholder">NO FEED</span>
+<img src="http://10.135.56.66:8080/stream?topic=/camera/color/image_raw">
 </div>
 
 </div>
@@ -231,7 +239,6 @@ TEMP
 <!-- RIGHT PANEL -->
 <div class="right-panel">
 
-<!-- ROVER + TOF -->
 <div class="rover-container">
 
 <div class="tof tof-top">
@@ -253,7 +260,6 @@ RIGHT
 
 </div>
 
-<!-- MAP -->
 <div class="map-circle">
 <canvas id="mapCanvas"></canvas>
 </div>
@@ -284,240 +290,193 @@ RIGHT
 </div>
 
 <script>
-        // ============================================
-        // CANVAS SETUP
-        // ============================================
-        const canvas = document.getElementById('mapCanvas');
-        const ctx = canvas.getContext('2d');
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radius = 240;
 
-        // Position tracking
-        let posX = centerX;
-        let posY = centerY;
-        let startX = centerX;
-        let startY = centerY;
-        let yaw = 0;
-        let pathHistory = [];
+/* ============================
+CANVAS SETUP
+============================ */
 
-        // Encoder tracking (uses enc1 for position calculation)
-        let lastEncoder = 0;
-        const ticksPerMeter = 1000; // Adjust based on your encoder
-        const scale = 100; // Pixels per meter
+const canvas = document.getElementById("mapCanvas");
+const ctx = canvas.getContext("2d");
 
-        // ============================================
-        // RESET FUNCTION
-        // ============================================
-        function resetPosition() {
-            posX = centerX;
-            posY = centerY;
-            startX = centerX;
-            startY = centerY;
-            yaw = 0;
-            pathHistory = [];
-            lastEncoder = 0;
+canvas.width = 320;
+canvas.height = 320;
 
-            // Also reset on server
-            fetch('/reset', { method: 'POST' });
+const centerX = canvas.width/2;
+const centerY = canvas.height/2;
+const radius = 150;
 
-            drawMap();
-            console.log('Position reset!');
-        }
+let posX = centerX;
+let posY = centerY;
+let yaw = 0;
 
-        // Keyboard shortcut: Press 'R' to reset
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'r' || e.key === 'R') {
-                resetPosition();
-            }
-        });
+let pathHistory = [];
+let lastEncoder = 0;
 
-        // ============================================
-        // DRAW MAP
-        // ============================================
-        function drawMap() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+const ticksPerMeter = 1000;
+const scale = 100;
 
-            // Draw grid
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(centerX - radius, centerY);
-            ctx.lineTo(centerX + radius, centerY);
-            ctx.moveTo(centerX, centerY - radius);
-            ctx.lineTo(centerX, centerY + radius);
-            ctx.stroke();
+/* ============================
+RESET
+============================ */
 
-            // Draw path history
-            if (pathHistory.length > 1) {
-                // Dark outline
-                ctx.strokeStyle = '#000000';
-                ctx.lineWidth = 5;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.beginPath();
-                ctx.moveTo(pathHistory[0].x, pathHistory[0].y);
-                for (let i = 1; i < pathHistory.length; i++) {
-                    ctx.lineTo(pathHistory[i].x, pathHistory[i].y);
-                }
-                ctx.stroke();
+function resetPosition(){
 
-                // Red path
-                ctx.strokeStyle = '#ff3366';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(pathHistory[0].x, pathHistory[0].y);
-                for (let i = 1; i < pathHistory.length; i++) {
-                    ctx.lineTo(pathHistory[i].x, pathHistory[i].y);
-                }
-                ctx.stroke();
+posX = centerX;
+posY = centerY;
 
-                // Waypoint dots
-                ctx.fillStyle = '#ffffff';
-                for (let i = 0; i < pathHistory.length; i += 30) {
-                    ctx.beginPath();
-                    ctx.arc(pathHistory[i].x, pathHistory[i].y, 2, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
+yaw = 0;
 
-            // Draw start position (green)
-            ctx.beginPath();
-            ctx.arc(startX, startY, 8, 0, Math.PI * 2);
-            ctx.fillStyle = '#00ff88';
-            ctx.shadowColor = '#00ff88';
-            ctx.shadowBlur = 10;
-            ctx.fill();
-            ctx.shadowBlur = 0;
+pathHistory = [];
+lastEncoder = 0;
 
-            // Draw current position (red)
-            ctx.beginPath();
-            ctx.arc(posX, posY, 10, 0, Math.PI * 2);
-            ctx.fillStyle = '#ff3366';
-            ctx.shadowColor = '#ff3366';
-            ctx.shadowBlur = 15;
-            ctx.fill();
-            ctx.shadowBlur = 0;
+fetch("/reset",{method:"POST"});
 
-            // Draw direction indicator
-            // Draw direction arrow
-            ctx.save();
-            ctx.translate(posX, posY);
-            ctx.rotate(-yaw * Math.PI / 180);
+drawMap();
 
-            ctx.beginPath();
-            ctx.moveTo(25, 0);      // Tip
-            ctx.lineTo(5, 6);       // Head Right
-            ctx.lineTo(5, 2);       // Shaft Right Start
-            ctx.lineTo(-35, 2);     // Tail Right
-            ctx.lineTo(-35, -2);    // Tail Left
-            ctx.lineTo(5, -2);      // Shaft Left Start
-            ctx.lineTo(5, -6);      // Head Left
-            ctx.closePath();
+}
 
-            ctx.fillStyle = '#ffffff';
-            ctx.shadowColor = '#000000';
-            ctx.shadowBlur = 5;
-            ctx.fill();
-            ctx.restore();
-        }
+/* ============================
+DRAW MAP
+============================ */
 
-        // ============================================
-        // UPDATE POSITION
-        // ============================================
-        function updatePosition(encoder, yawAngle) {
-            // Calculate distance from encoder change
-            const delta = (encoder - lastEncoder) / ticksPerMeter;
-            const distance = delta * scale;
+function drawMap(){
 
-            // Use yaw angle for direction (yaw is integrated gz from server)
-            yaw = yawAngle;
+ctx.clearRect(0,0,canvas.width,canvas.height);
 
-            // Update position (yaw: 0 = right, 90 = down, etc.)
-            posX += distance * Math.cos(-yaw * Math.PI / 180);
-            posY += distance * Math.sin(-yaw * Math.PI / 180);
+ctx.beginPath();
+ctx.arc(centerX,centerY,radius,0,Math.PI*2);
+ctx.strokeStyle="#00ff88";
+ctx.stroke();
 
-            // Keep within circular bounds
-            const distFromCenter = Math.sqrt((posX - centerX) ** 2 + (posY - centerY) ** 2);
-            if (distFromCenter > radius - 15) {
-                const angle = Math.atan2(posY - centerY, posX - centerX);
-                posX = centerX + (radius - 15) * Math.cos(angle);
-                posY = centerY + (radius - 15) * Math.sin(angle);
-            }
+/* draw path */
 
-            // Add to path history
-            if (distance !== 0) {
-                pathHistory.push({ x: posX, y: posY });
-                if (pathHistory.length > 1000) pathHistory.shift();
-            }
+if(pathHistory.length>1){
 
-            lastEncoder = encoder;
-            drawMap();
-        }
+ctx.beginPath();
+ctx.moveTo(pathHistory[0].x,pathHistory[0].y);
 
-        // ============================================
-        // FETCH DATA
-        // ============================================
-        async function updateData() {
-            try {
-                const res = await fetch("/data");
-                const d = await res.json();
+for(let i=1;i<pathHistory.length;i++)
+ctx.lineTo(pathHistory[i].x,pathHistory[i].y);
 
-                // Update MPU - Linear Acceleration
-                document.getElementById('ax').innerText = parseFloat(d.ax).toFixed(2);
-                document.getElementById('ay').innerText = parseFloat(d.ay).toFixed(2);
-                document.getElementById('az').innerText = parseFloat(d.az).toFixed(2);
+ctx.strokeStyle="#ff3366";
+ctx.lineWidth=3;
+ctx.stroke();
 
-                // Update MPU - Angular Velocity
-                document.getElementById('gx').innerText = parseFloat(d.gx).toFixed(2);
-                document.getElementById('gy').innerText = parseFloat(d.gy).toFixed(2);
-                document.getElementById('gz').innerText = parseFloat(d.gz).toFixed(2);
+}
 
-                // Update Temperature
-                if (d.temp !== undefined) {
-                    document.getElementById('tempDisplay').innerText = parseFloat(d.temp).toFixed(1);
-                }
+/* robot */
 
-                // Update Encoders (averaged ticks)
-                document.getElementById('leftTicks').innerText = parseFloat(d.left_ticks).toFixed(1);
-                document.getElementById('rightTicks').innerText = parseFloat(d.right_ticks).toFixed(1);
+ctx.beginPath();
+ctx.arc(posX,posY,6,0,Math.PI*2);
+ctx.fillStyle="#ff3366";
+ctx.fill();
 
-                // Update 4 ToF Sensors
-                document.getElementById('tof1').innerText = d.tof1;
-                document.getElementById('tof2').innerText = d.tof2;
-                document.getElementById('tof3').innerText = d.tof3;
-                document.getElementById('tof4').innerText = d.tof4;
+/* heading */
 
-                // Update info display
-                const yawVal = parseFloat(d.yaw) || 0;
-                document.getElementById('yawAngle').innerText = yawVal.toFixed(1) + '°';
-                document.getElementById('gzDisplay').innerText = parseFloat(d.gz).toFixed(1);
-                document.getElementById('enc1Display').innerText = parseFloat(d.enc_left).toFixed(0);
+ctx.save();
 
-                // Update position on map (uses accumulated enc_left for distance, yaw for direction)
-                updatePosition(parseFloat(d.enc_left) || 0, yawVal);
+ctx.translate(posX,posY);
+ctx.rotate(-yaw*Math.PI/180);
 
-            } catch (e) {
-                console.log('Fetch error:', e);
-            }
-        }
+ctx.beginPath();
+ctx.moveTo(20,0);
+ctx.lineTo(-10,6);
+ctx.lineTo(-10,-6);
+ctx.closePath();
 
-        // Camera stream
-        function updateCamera() {
-            const img = document.getElementById('cameraStream');
-            const placeholder = document.getElementById('cameraPlaceholder');
-            img.src = '/stream?' + Date.now();
-            img.onload = () => { img.style.display = 'block'; placeholder.style.display = 'none'; };
-            img.onerror = () => { img.style.display = 'none'; placeholder.style.display = 'block'; };
-        }
+ctx.fillStyle="#fff";
+ctx.fill();
 
-        // ============================================
-        // INITIALIZE
-        // ============================================
-        drawMap();
-        setInterval(updateData, 100);  // 10 Hz
-        setInterval(updateCamera, 1000);
-    </script>
+ctx.restore();
+
+}
+
+/* ============================
+POSITION UPDATE
+============================ */
+
+function updatePosition(enc,yawAngle){
+
+let delta=(enc-lastEncoder)/ticksPerMeter;
+let dist=delta*scale;
+
+yaw=yawAngle;
+
+posX+=dist*Math.cos(-yaw*Math.PI/180);
+posY+=dist*Math.sin(-yaw*Math.PI/180);
+
+pathHistory.push({x:posX,y:posY});
+
+if(pathHistory.length>800)
+pathHistory.shift();
+
+lastEncoder=enc;
+
+drawMap();
+
+}
+
+/* ============================
+FETCH DATA
+============================ */
+
+async function updateData(){
+
+try{
+
+let res=await fetch("/data");
+let d=await res.json();
+
+/* MPU */
+
+ax.innerText=d.ax.toFixed(2);
+ay.innerText=d.ay.toFixed(2);
+az.innerText=d.az.toFixed(2);
+
+gx.innerText=d.gx.toFixed(2);
+gy.innerText=d.gy.toFixed(2);
+gz.innerText=d.gz.toFixed(2);
+
+/* temp */
+
+tempDisplay.innerText=d.temp.toFixed(1);
+
+/* encoders */
+
+leftTicks.innerText=d.left_ticks.toFixed(1);
+rightTicks.innerText=d.right_ticks.toFixed(1);
+
+/* tof */
+
+tof1.innerText=d.tof1;
+tof2.innerText=d.tof2;
+tof3.innerText=d.tof3;
+
+/* info */
+
+yawAngle.innerText=d.yaw.toFixed(1)+"°";
+gzDisplay.innerText=d.gz.toFixed(1);
+enc1Display.innerText=d.enc_left.toFixed(0);
+
+updatePosition(d.enc_left,d.yaw);
+
+}catch(e){
+
+console.log("data error",e);
+
+}
+
+}
+
+/* ============================
+INIT
+============================ */
+
+drawMap();
+
+setInterval(updateData,100);
+
+</script>
 
 </body>
 </html>
