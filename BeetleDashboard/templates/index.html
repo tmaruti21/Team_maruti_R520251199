@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <title>Beetle Dashboard</title>
 
+<!-- Added model-viewer script -->
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
 <style>
 
 *{
@@ -80,6 +83,7 @@ display:flex;
 flex-direction:column;
 align-items:center;
 padding:20px;
+overflow-y:auto;
 }
 
 .camera-title{
@@ -102,6 +106,27 @@ overflow:hidden;
 width:100%;
 height:100%;
 object-fit:cover;
+}
+
+.viewer-controls{
+margin-top:15px;
+display:flex;
+gap:10px;
+justify-content:center;
+}
+
+.viewer-controls button{
+background:#1e1e2e;
+border:1px solid rgba(0,255,136,.3);
+padding:10px 16px;
+color:white;
+border-radius:6px;
+cursor:pointer;
+transition: background 0.2s;
+}
+
+.viewer-controls button:hover{
+background:#2a2a3d;
 }
 
 /* ===== RIGHT PANEL ===== */
@@ -232,6 +257,30 @@ TEMP
 
 <div class="camera-feed">
 <img src="http://10.135.56.66:8080/stream?topic=/camera/color/image_raw">
+</div>
+
+<div class="camera-title" style="margin-top: 20px;">3D MODEL</div>
+
+<model-viewer
+id="viewer"
+src="/static/rover.glb"
+camera-controls
+shadow-intensity="1"
+environment-image="neutral"
+exposure="1"
+auto-rotate
+touch-action="none"
+bounds="tight"
+camera-orbit="180deg 150deg 105%"
+camera-target="0m 0m 0m"
+interaction-prompt="none"
+style="width: 100%; height: 600px; border: 2px solid rgba(255, 200, 0, 0.4); border-radius: 10px; box-shadow: 0 0 40px rgba(0,0,0,0.6);">
+</model-viewer>
+
+<div class="viewer-controls">
+<button onclick="resetCamera()">Reset View</button>
+<button onclick="toggleRotation()">Toggle Rotation</button>
+<button onclick="fullscreen()">Fullscreen</button>
 </div>
 
 </div>
@@ -475,6 +524,25 @@ INIT
 drawMap();
 
 setInterval(updateData,100);
+
+/* ============================
+MODEL VIEWER CONTROLS
+============================ */
+
+const viewer = document.getElementById("viewer");
+
+function resetCamera(){
+viewer.cameraOrbit = "180deg 150deg 105%";
+viewer.cameraTarget = "0m 0m 0m";
+}
+
+function toggleRotation(){
+viewer.autoRotate = !viewer.autoRotate;
+}
+
+function fullscreen(){
+viewer.requestFullscreen();
+}
 
 </script>
 

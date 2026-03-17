@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CAD Model Viewer</title>
+
+<script type="module"
+src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
+</script>
+
+<style>
+
+body{
+margin:0;
+background:#0f0f14;
+font-family:Segoe UI;
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+height:100vh;
+}
+
+#viewer{
+width:900px;
+height:600px;
+border-radius:12px;
+overflow:hidden;
+box-shadow:0 0 40px rgba(0,0,0,0.6);
+}
+
+.controls{
+margin-top:15px;
+display:flex;
+gap:10px;
+}
+
+button{
+background:#1e1e2e;
+border:none;
+padding:10px 16px;
+color:white;
+border-radius:6px;
+cursor:pointer;
+}
+
+button:hover{
+background:#2a2a3d;
+}
+
+</style>
+</head>
+
+<body>
+
+<model-viewer
+id="viewer"
+src="model.glb"
+camera-controls
+shadow-intensity="1"
+environment-image="neutral"
+exposure="1"
+auto-rotate
+interaction-prompt="none"
+>
+
+</model-viewer>
+
+<div class="controls">
+
+<button onclick="resetCamera()">Reset View</button>
+
+<button onclick="toggleRotation()">Toggle Rotation</button>
+
+<button onclick="fullscreen()">Fullscreen</button>
+
+</div>
+
+<script>
+
+const viewer = document.getElementById("viewer");
+
+function resetCamera(){
+viewer.cameraOrbit = "0deg 75deg 105%";
+viewer.cameraTarget = "0m 0m 0m";
+}
+
+function toggleRotation(){
+viewer.autoRotate = !viewer.autoRotate;
+}
+
+function fullscreen(){
+viewer.requestFullscreen();
+}
+
+</script>
+
+</body>
+</html>
