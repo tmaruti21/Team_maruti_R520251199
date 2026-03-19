@@ -232,8 +232,8 @@ class VisionCommandNode(Node):
         self.bridge = CvBridge()
 
         # Calibrated HSV values
-        self.lower_color = np.array([100, 30, 20])
-        self.upper_color = np.array([150, 140, 90])
+        self.lower_color = np.array([20, 100, 100])
+        self.upper_color = np.array([40, 255, 255])
 
     def image_callback(self, msg):
         frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")

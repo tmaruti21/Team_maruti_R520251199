@@ -25,6 +25,7 @@ setup(
             'hsv_calculator = rover_control.hsv_calculator:main',
             'serial_teleop = rover_control.serial_teleop:main',
             'hard_core = rover_control.hard_core:main',
+            'final_lane = rover_control.final_lane:main',
         ],
     },
 )
